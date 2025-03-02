@@ -1,4 +1,8 @@
 import enum
+import random
+from math import lcm
+from rl_agent import RLAgent
+import numpy as np
 
 
 class CriticalityLevel(enum.Enum):
@@ -10,16 +14,21 @@ class System:
     _instance = None
 
     def __init__(self):
+        self.rl_agent = None
         self.tasks = []
         self.jobs = []
         self.ready_queue = []
         self.criticality_level = CriticalityLevel.LOW
         self.utilization = {}
         self.vdf = 0
+        self.n_mode_change = 0
+        self.hyper_period = 0
         self.time = 0
 
     def add_task(self, task):
         self.tasks.append(task)
+        self.hyper_period = lcm(*[task.priority for task in self.tasks])
+        self.rl_agent = RLAgent(len(self.tasks))
 
     def calculate_utilization(self):
         for task_criticality_level in CriticalityLevel:
@@ -92,9 +101,41 @@ class System:
             if job.task.criticality_level == CriticalityLevel.LOW:
                 print(f'a job from task {job.task.id} has been dropped.')
                 self.ready_queue.remove(job)
+        self.n_mode_change += 1
 
     def switch_mode_to_low(self):
         self.criticality_level = CriticalityLevel.LOW
+
+    def update_wcet_with_rl(self):
+        state = self.calculate_qos_state()
+        state_idx = np.digitize(state, self.rl_agent.states) - 1
+        action = self.rl_agent.select_action(state_idx)
+
+        if action == "increase":
+            for task in self.tasks:
+                if task.criticality_level == CriticalityLevel.HIGH:
+                    task.adaptive_wcet = min(task.adaptive_wcet * 1.1, task.wcet[CriticalityLevel.HIGH])
+
+        elif action == "decrease":
+            for task in self.tasks:
+                if task.criticality_level == CriticalityLevel.HIGH:
+                    task.adaptive_wcet = max(task.adaptive_wcet * 0.9, task.wcet[CriticalityLevel.LOW])
+
+        reward = self.compute_reward()
+        next_state_idx = np.digitize(self.calculate_qos_state(), self.rl_agent.states) - 1
+        self.rl_agent.update_q_table(state_idx, self.rl_agent.actions.index(action), reward, next_state_idx)
+
+    def calculate_qos_state(self):
+        # Define QoS as the ratio of scheduled LC tasks to max possible LC tasks
+        scheduled_lc_tasks = sum(1 for job in self.jobs if job.task.criticality_level == CriticalityLevel.LOW)
+        max_lc_tasks = len([t for t in self.tasks if t.criticality_level == CriticalityLevel.LOW])
+        return scheduled_lc_tasks / max_lc_tasks if max_lc_tasks > 0 else 1.0
+
+    def compute_reward(self):
+        # Reward function based on mode switches and QoS
+        mode_switch_penalty = -10 if self.criticality_level == CriticalityLevel.HIGH else 0
+        qos_reward = self.calculate_qos_state() * 10
+        return qos_reward + mode_switch_penalty
 
     @staticmethod
     def get_instance():
@@ -126,7 +167,13 @@ class Job:
         self.is_done = False
 
     def generate_random_execution_time(self):
-        return self.task.wcet[System.get_instance().criticality_level]
+        low_wcet = self.task.wcet[CriticalityLevel.LOW]
+        high_wcet = self.task.wcet[CriticalityLevel.HIGH]
+
+        if random.random() < 0.8:
+            return random.uniform(low_wcet * 0.8, low_wcet)
+        else:
+            return random.uniform(low_wcet, high_wcet)
 
     def get_deadline(self):
         if System.get_instance().criticality_level == CriticalityLevel.HIGH or self.task.criticality_level == CriticalityLevel.LOW:
