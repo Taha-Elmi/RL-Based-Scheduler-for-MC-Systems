@@ -45,8 +45,8 @@ class System:
 
     def schedule(self):
         def deadline_and_criticality_sort_function(j1: Job, j2: Job) -> int:
-            a = j1.deadline
-            b = j2.deadline
+            a = j1.get_deadline()
+            b = j2.get_deadline()
             if a < b:
                 return -1
             elif a == b:
@@ -74,7 +74,7 @@ class System:
             chosen_job = self.ready_queue[0]
             chosen_job.execution_time += 1
 
-            if (chosen_job.execution_time > chosen_job.task.wcet
+            if (chosen_job.execution_time > chosen_job.task.wcet[System.get_instance().criticality_level]
                     and chosen_job.task.criticality_level == CriticalityLevel.HIGH):
                 self.switch_mode_to_high()
 
