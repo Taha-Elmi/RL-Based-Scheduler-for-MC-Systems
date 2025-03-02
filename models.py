@@ -7,17 +7,34 @@ class CriticalityLevel(enum.Enum):
 
 
 class System:
-    instance = None
+    _instance = None
 
     def __init__(self):
         self.tasks = []
         self.jobs = []
         self.ready_queue = []
         self.criticality_level = CriticalityLevel.LOW
+        self.utilization = {}
+        self.vdf = 0
         self.time = 0
 
     def add_task(self, task):
         self.tasks.append(task)
+
+    def calculate_utilization(self):
+        for task_criticality_level in CriticalityLevel:
+            for system_criticality_level in CriticalityLevel:
+                if system_criticality_level == CriticalityLevel.HIGH and task_criticality_level == CriticalityLevel.LOW:
+                    continue
+                u = 0
+                for task in self.tasks:
+                    if task.criticality_level == task_criticality_level:
+                        u += task.wcet[system_criticality_level] / task.period
+                self.utilization[(task_criticality_level, system_criticality_level)] = u
+
+    def update_vdf(self):
+        self.vdf = (self.utilization[(CriticalityLevel.HIGH, CriticalityLevel.LOW)] /
+                    (1 - self.utilization[(CriticalityLevel.LOW, CriticalityLevel.LOW)]))
 
     def release_job(self, task):
         new_job = Job(task)
@@ -81,19 +98,19 @@ class System:
 
     @staticmethod
     def get_instance():
-        if System.instance is None:
-            System.instance = System()
-        return System.instance
+        if System._instance is None:
+            System._instance = System()
+        return System._instance
 
 
 class Task:
     counter = 1
 
-    def __init__(self, id, period, wcet, criticality_level):
+    def __init__(self, id, period, low_wcet, high_wcet, criticality_level):
         # self.id = Task.counter
         self.id = id
         self.period = period
-        self.wcet = wcet
+        self.wcet = {CriticalityLevel.LOW: low_wcet, CriticalityLevel.HIGH: high_wcet}
         self.aet = 0
         self.number_of_jobs = 0
         self.criticality_level = criticality_level
@@ -105,12 +122,17 @@ class Job:
     def __init__(self, task: Task):
         self.task = task
         self.release_time = System.get_instance().time
-        self.deadline = self.release_time + self.task.period
         self.execution_time = 0
         self.is_done = False
 
     def generate_random_execution_time(self):
-        return self.task.wcet
+        return self.task.wcet[System.get_instance().criticality_level]
+
+    def get_deadline(self):
+        if System.get_instance().criticality_level == CriticalityLevel.HIGH or self.task.criticality_level == CriticalityLevel.LOW:
+            return self.release_time + self.task.period
+        else:
+            return self.release_time + (System.get_instance().vdf * self.task.period)
 
     def __repr__(self):
-        return f'[task_id: {self.task.id}, deadline: {self.deadline}, wcet: {self.task.wcet}, execution_time: {self.execution_time}]\n'
+        return f'[task_id: {self.task.id}, deadline: {self.get_deadline()}, wcet: {self.task.wcet}, execution_time: {self.execution_time}]\n'
