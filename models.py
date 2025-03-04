@@ -22,6 +22,7 @@ class System:
         self.utilization = {}
         self.vdf = 0
         self.n_mode_change = 0
+        self.n_dropped_jobs = 0
         self.hyper_period = 0
         self.time = 0
 
@@ -74,13 +75,15 @@ class System:
         for job in self.ready_queue:
             if job.get_deadline() <= self.time:
                 self.ready_queue.remove(job)
+                self.n_dropped_jobs += 1
 
     def generate_new_jobs(self):
         for task in self.tasks:
-            if (self.time % task.period == 0
-                    and (self.criticality_level == CriticalityLevel.LOW or
-                         task.criticality_level == CriticalityLevel.HIGH)):
-                self.release_job(task)
+            if self.time % task.period == 0:
+                if self.criticality_level == CriticalityLevel.LOW or task.criticality_level == CriticalityLevel.HIGH:
+                    self.release_job(task)
+                else:
+                    self.n_dropped_jobs += 1
 
     def step(self):
         if self.criticality_level == CriticalityLevel.HIGH and self.check_low_criticality_conditions():
@@ -121,6 +124,7 @@ class System:
             if job.task.criticality_level == CriticalityLevel.LOW:
                 print(f'a job from task {job.task.id} has been dropped.')
                 self.ready_queue.remove(job)
+                self.n_dropped_jobs += 1
         self.n_mode_change += 1
 
     def update_wcet_with_rl(self):
