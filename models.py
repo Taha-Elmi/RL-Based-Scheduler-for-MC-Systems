@@ -70,30 +70,50 @@ class System:
         from functools import cmp_to_key
         self.ready_queue.sort(key=cmp_to_key(deadline_and_criticality_sort_function))
 
-    def step(self):
+    def check_expired_jobs(self):
+        for job in self.ready_queue:
+            if job.get_deadline() <= self.time:
+                self.ready_queue.remove(job)
+
+    def generate_new_jobs(self):
         for task in self.tasks:
             if (self.time % task.period == 0
                     and (self.criticality_level == CriticalityLevel.LOW or
                          task.criticality_level == CriticalityLevel.HIGH)):
                 self.release_job(task)
 
+    def step(self):
+        if self.criticality_level == CriticalityLevel.HIGH and self.check_low_criticality_conditions():
+            self.switch_mode_to_low()
+
+        self.check_expired_jobs()
+
+        self.generate_new_jobs()
+
         self.schedule()
 
         if len(self.ready_queue) > 0:
-            chosen_job = self.ready_queue[0]
-            chosen_job.execution_time += 1
+            self.ready_queue[0].execute()
 
-            if (chosen_job.execution_time > chosen_job.task.wcet[System.get_instance().criticality_level]
-                    and chosen_job.task.criticality_level == CriticalityLevel.HIGH):
-                self.switch_mode_to_high()
-
-            if chosen_job.execution_time >= chosen_job.generate_random_execution_time():
-                chosen_job.is_done = True
-                self.ready_queue.remove(chosen_job)
-        elif self.criticality_level == CriticalityLevel.HIGH:
-            self.switch_mode_to_low()
+        if self.criticality_level == CriticalityLevel.LOW and self.check_high_criticality_conditions():
+            self.switch_mode_to_high()
 
         self.time += 1
+
+    def check_low_criticality_conditions(self):
+        for job in self.ready_queue:
+            if job.task.criticality_level == CriticalityLevel.HIGH:
+                return False
+        return True
+
+    def switch_mode_to_low(self):
+        self.criticality_level = CriticalityLevel.LOW
+
+    def check_high_criticality_conditions(self):
+        for job in self.ready_queue:
+            if job.task.criticality_level == CriticalityLevel.HIGH and job.execution_time > job.task.wcet[self.criticality_level]:
+                return True
+        return False
 
     def switch_mode_to_high(self):
         self.criticality_level = CriticalityLevel.HIGH
@@ -102,9 +122,6 @@ class System:
                 print(f'a job from task {job.task.id} has been dropped.')
                 self.ready_queue.remove(job)
         self.n_mode_change += 1
-
-    def switch_mode_to_low(self):
-        self.criticality_level = CriticalityLevel.LOW
 
     def update_wcet_with_rl(self):
         state = self.calculate_qos_state()
@@ -184,6 +201,12 @@ class Job:
             return self.release_time + self.task.period
         else:
             return self.release_time + (System.get_instance().vdf * self.task.period)
+
+    def execute(self):
+        self.execution_time += 1
+        if self.execution_time > self.generate_random_execution_time():
+            self.is_done = True
+            System.get_instance().ready_queue.remove(self)
 
     def __repr__(self):
         return f'[task_id: {self.task.id}, deadline: {self.get_deadline()}, wcet: {self.task.wcet}, execution_time: {self.execution_time}]\n'
