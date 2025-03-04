@@ -1,7 +1,9 @@
 from models import Task, Job, System, CriticalityLevel
+from ui import ExecutionTimeAdjuster
+import threading
 
 
-if __name__ == '__main__':
+def main():
     task1 = Task(1, 5, 1, 1, CriticalityLevel.LOW)
     task2 = Task(2, 10, 1, 1, CriticalityLevel.LOW)
     task3 = Task(3, 5, 1, 1, CriticalityLevel.LOW)
@@ -23,4 +25,13 @@ if __name__ == '__main__':
         print(f't = {system.time}, criticality level = {system.criticality_level}')
         print(system.ready_queue)
         system.step()
-        input('----------------------------------------')
+        # input('----------------------------------------')
+
+
+if __name__ == '__main__':
+    scheduler_thread = threading.Thread(target=main, daemon=True)
+    scheduler_thread.start()
+
+    adjuster = ExecutionTimeAdjuster()
+    adjuster.run()
+

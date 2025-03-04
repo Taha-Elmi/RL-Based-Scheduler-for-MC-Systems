@@ -27,7 +27,7 @@ class System:
 
     def add_task(self, task):
         self.tasks.append(task)
-        self.hyper_period = lcm(*[task.priority for task in self.tasks])
+        self.hyper_period = lcm(*[task.period for task in self.tasks])
         self.rl_agent = RLAgent(len(self.tasks))
 
     def calculate_utilization(self):
@@ -160,6 +160,8 @@ class Task:
 
 
 class Job:
+    execution_time_coefficient = 1.0
+
     def __init__(self, task: Task):
         self.task = task
         self.release_time = System.get_instance().time
@@ -171,9 +173,11 @@ class Job:
         high_wcet = self.task.wcet[CriticalityLevel.HIGH]
 
         if random.random() < 0.8:
-            return random.uniform(low_wcet * 0.8, low_wcet)
+            base_execution_time = random.uniform(low_wcet * 0.8, low_wcet)
         else:
-            return random.uniform(low_wcet, high_wcet)
+            base_execution_time = random.uniform(low_wcet, high_wcet)
+
+        return base_execution_time * Job.execution_time_coefficient
 
     def get_deadline(self):
         if System.get_instance().criticality_level == CriticalityLevel.HIGH or self.task.criticality_level == CriticalityLevel.LOW:
