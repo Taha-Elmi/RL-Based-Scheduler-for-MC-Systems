@@ -23,6 +23,9 @@ class System:
         self.vdf = 0
         self.n_mode_change = 0
         self.n_dropped_jobs = 0
+        self.mode_change_history = []
+        self.dropped_jobs_history = []
+        self.time_history = []
         self.hyper_period = 0
         self.time = 0
 
@@ -45,6 +48,10 @@ class System:
     def update_vdf(self):
         self.vdf = (self.utilization[(CriticalityLevel.HIGH, CriticalityLevel.LOW)] /
                     (1 - self.utilization[(CriticalityLevel.LOW, CriticalityLevel.LOW)]))
+
+    def setup(self):
+        self.calculate_utilization()
+        self.update_vdf()
 
     def release_job(self, task):
         new_job = Job(task)
@@ -91,6 +98,9 @@ class System:
 
         self.check_expired_jobs()
 
+        if self.time % self.hyper_period == 0:
+            self.update_graph()
+
         self.generate_new_jobs()
 
         self.schedule()
@@ -126,6 +136,12 @@ class System:
                 self.ready_queue.remove(job)
                 self.n_dropped_jobs += 1
         self.n_mode_change += 1
+
+    def update_graph(self):
+        """Update the graph data for real-time plotting."""
+        self.mode_change_history.append(self.n_mode_change)
+        self.dropped_jobs_history.append(self.n_dropped_jobs)
+        self.time_history.append(self.time)
 
     def update_wcet_with_rl(self):
         state = self.calculate_qos_state()

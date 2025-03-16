@@ -1,6 +1,7 @@
 from models import Task, Job, System, CriticalityLevel
-from ui import ExecutionTimeAdjuster
+from ui import ExecutionTimeAdjuster, GraphVisualizer
 import threading
+import time
 
 
 def main():
@@ -15,8 +16,7 @@ def main():
     system.add_task(task3)
     system.add_task(task4)
 
-    system.calculate_utilization()
-    system.update_vdf()
+    system.setup()
 
     print(system.utilization)
     print(system.vdf)
@@ -25,13 +25,24 @@ def main():
         print(f't = {system.time}, criticality level = {system.criticality_level}')
         print(system.ready_queue)
         system.step()
+        time.sleep(0.5)
         # input('----------------------------------------')
+
+
+def graph_visualizer():
+    while True:
+        system = System.get_instance()
+        graph = GraphVisualizer(system)
+        graph.update()
 
 
 if __name__ == '__main__':
     scheduler_thread = threading.Thread(target=main, daemon=True)
     scheduler_thread.start()
 
-    adjuster = ExecutionTimeAdjuster()
+    # visualizer_thread = threading.Thread(target=graph_visualizer, daemon=True)
+    # visualizer_thread.start()
+
+    adjuster = ExecutionTimeAdjuster(System.get_instance())
     adjuster.run()
 
