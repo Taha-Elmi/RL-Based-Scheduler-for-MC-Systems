@@ -1,7 +1,6 @@
 import pygame
 from matplotlib import pyplot as plt
-from matplotlib import animation as animation
-from models import Job, System
+from models import Job
 import time
 import io
 
@@ -59,7 +58,7 @@ class ExecutionTimeAdjuster:
             self.screen.blit(text, (self.slider_x + self.slider_width // 3, self.slider_y - 30))
 
             pygame.display.flip()
-            time.sleep(0.5)  # Prevents high CPU usage
+            # time.sleep(0.5)  # Prevents high CPU usage
 
         pygame.quit()
 
@@ -93,14 +92,21 @@ class GraphVisualizer:
     def update_plot(self):
         """Update Matplotlib graph and return as Pygame image."""
         if len(self.system.time_history) > 0:
+            # Set data for lines
             self.line1.set_data(self.system.time_history, self.system.mode_change_history)
             self.line2.set_data(self.system.time_history, self.system.dropped_jobs_history)
+
+            # Keep x-axis always showing the last 200 units
+            max_x = max(200, max(self.system.time_history))  # Get the latest time value
+            min_x = max(0, max_x - 200)  # Keep only last 200 units
+
+            self.ax.set_xlim(min_x, max_x)  # Update x-axis range
             self.ax.relim()
-            self.ax.autoscale_view()
+            self.ax.autoscale_view(scaley=True)  # Only autoscale y-axis
 
         plt.draw()
 
-        # Convert Matplotlib figure to Pygame image
+        # Convert Matplotlib figure to a Pygame image
         img_buffer = io.BytesIO()
         self.fig.savefig(img_buffer, format="PNG")
         img_buffer.seek(0)

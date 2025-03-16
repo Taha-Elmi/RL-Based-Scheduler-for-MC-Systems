@@ -58,7 +58,7 @@ class System:
         task.number_of_jobs += 1
         self.jobs.append(new_job)
         self.ready_queue.append(new_job)
-        print(f'a job from task {task.id} has been released')
+        # print(f'a job from task {task.id} has been released')
 
     def schedule(self):
         def deadline_and_criticality_sort_function(j1: Job, j2: Job) -> int:
@@ -83,6 +83,7 @@ class System:
             if job.get_deadline() <= self.time:
                 self.ready_queue.remove(job)
                 self.n_dropped_jobs += 1
+                print(f'a jon from task {job.task.id} has been dropped.')
 
     def generate_new_jobs(self):
         for task in self.tasks:
@@ -100,6 +101,7 @@ class System:
 
         if self.time % self.hyper_period == 0:
             self.update_graph()
+            self.update_wcet_with_rl()
 
         self.generate_new_jobs()
 
@@ -121,6 +123,7 @@ class System:
 
     def switch_mode_to_low(self):
         self.criticality_level = CriticalityLevel.LOW
+        print(f'system has switched to {self.criticality_level}')
 
     def check_high_criticality_conditions(self):
         for job in self.ready_queue:
@@ -136,12 +139,16 @@ class System:
                 self.ready_queue.remove(job)
                 self.n_dropped_jobs += 1
         self.n_mode_change += 1
+        print(f'system has switched to {self.criticality_level}')
 
     def update_graph(self):
         """Update the graph data for real-time plotting."""
         self.mode_change_history.append(self.n_mode_change)
         self.dropped_jobs_history.append(self.n_dropped_jobs)
         self.time_history.append(self.time)
+
+        self.n_mode_change = 0
+        self.n_dropped_jobs = 0
 
     def update_wcet_with_rl(self):
         state = self.calculate_qos_state()
@@ -151,12 +158,12 @@ class System:
         if action == "increase":
             for task in self.tasks:
                 if task.criticality_level == CriticalityLevel.HIGH:
-                    task.adaptive_wcet = min(task.adaptive_wcet * 1.1, task.wcet[CriticalityLevel.HIGH])
+                    task.wcet[CriticalityLevel.LOW] = min(task.wcet[CriticalityLevel.LOW] * 1.1, task.wcet[CriticalityLevel.HIGH])
 
         elif action == "decrease":
             for task in self.tasks:
                 if task.criticality_level == CriticalityLevel.HIGH:
-                    task.adaptive_wcet = max(task.adaptive_wcet * 0.9, task.wcet[CriticalityLevel.LOW])
+                    task.wcet[CriticalityLevel.LOW] = task.wcet[CriticalityLevel.LOW] * 0.9
 
         reward = self.compute_reward()
         next_state_idx = np.digitize(self.calculate_qos_state(), self.rl_agent.states) - 1
@@ -164,15 +171,15 @@ class System:
 
     def calculate_qos_state(self):
         # Define QoS as the ratio of scheduled LC tasks to max possible LC tasks
-        scheduled_lc_tasks = sum(1 for job in self.jobs if job.task.criticality_level == CriticalityLevel.LOW)
-        max_lc_tasks = len([t for t in self.tasks if t.criticality_level == CriticalityLevel.LOW])
+        scheduled_lc_tasks = sum(1 for job in self.jobs if job.task.criticality_level == CriticalityLevel.LOW and job.is_done)
+        max_lc_tasks = sum(1 for job in self.jobs if job.task.criticality_level == CriticalityLevel.LOW)
         return scheduled_lc_tasks / max_lc_tasks if max_lc_tasks > 0 else 1.0
 
     def compute_reward(self):
         # Reward function based on mode switches and QoS
         mode_switch_penalty = -10 if self.criticality_level == CriticalityLevel.HIGH else 0
         qos_reward = self.calculate_qos_state() * 10
-        return qos_reward + mode_switch_penalty
+        return qos_reward
 
     @staticmethod
     def get_instance():
