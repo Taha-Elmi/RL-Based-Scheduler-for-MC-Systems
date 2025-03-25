@@ -9,7 +9,7 @@ class RLAgent:
         self.q_table = np.zeros((len(self.states), len(self.actions)))
         self.learning_rate = 0.5
         self.discount_factor = 0.9
-        self.epsilon = 0.2  # Exploration-exploitation balance
+        self.epsilon = 0.01  # Exploration-exploitation balance
 
     def select_action(self, state_index):
         if random.random() < self.epsilon:

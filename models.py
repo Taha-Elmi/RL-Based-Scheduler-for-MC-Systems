@@ -152,22 +152,26 @@ class System:
 
     def update_wcet_with_rl(self):
         state = self.calculate_qos_state()
+        # input('state: ' + str(state))
         state_idx = np.digitize(state, self.rl_agent.states) - 1
         action = self.rl_agent.select_action(state_idx)
+        # input('action: ' + str(action))
 
         if action == "increase":
             for task in self.tasks:
                 if task.criticality_level == CriticalityLevel.HIGH:
-                    task.wcet[CriticalityLevel.LOW] = min(task.wcet[CriticalityLevel.LOW] * 1.1, task.wcet[CriticalityLevel.HIGH])
+                    task.wcet[CriticalityLevel.LOW] = min(task.wcet[CriticalityLevel.LOW] + 1, task.wcet[CriticalityLevel.HIGH])
 
         elif action == "decrease":
             for task in self.tasks:
                 if task.criticality_level == CriticalityLevel.HIGH:
-                    task.wcet[CriticalityLevel.LOW] = task.wcet[CriticalityLevel.LOW] * 0.9
+                    task.wcet[CriticalityLevel.LOW] = max(task.wcet[CriticalityLevel.LOW] - 1, 1)
 
         reward = self.compute_reward()
         next_state_idx = np.digitize(self.calculate_qos_state(), self.rl_agent.states) - 1
         self.rl_agent.update_q_table(state_idx, self.rl_agent.actions.index(action), reward, next_state_idx)
+        print(self.rl_agent.q_table)
+        input()
 
     def calculate_qos_state(self):
         # Define QoS as the ratio of scheduled LC tasks to max possible LC tasks
@@ -178,7 +182,7 @@ class System:
     def compute_reward(self):
         # Reward function based on mode switches and QoS
         mode_switch_penalty = -10 if self.criticality_level == CriticalityLevel.HIGH else 0
-        qos_reward = self.calculate_qos_state() * 10
+        qos_reward = self.calculate_qos_state() * 10 - 10
         return qos_reward
 
     @staticmethod
