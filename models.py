@@ -171,7 +171,10 @@ class System:
         next_state_idx = np.digitize(self.calculate_qos_state(), self.rl_agent.states) - 1
         self.rl_agent.update_q_table(state_idx, self.rl_agent.actions.index(action), reward, next_state_idx)
         print(self.rl_agent.q_table)
-        input()
+        # input()
+
+        self.calculate_utilization()
+        self.update_vdf()
 
     def calculate_qos_state(self):
         # Define QoS as the ratio of scheduled LC tasks to max possible LC tasks
@@ -220,10 +223,10 @@ class Job:
         low_wcet = self.task.wcet[CriticalityLevel.LOW]
         high_wcet = self.task.wcet[CriticalityLevel.HIGH]
 
-        if random.random() < 0.8:
+        if random.random() < 0.9:
             base_execution_time = random.uniform(low_wcet * 0.8, low_wcet)
         else:
-            base_execution_time = random.uniform(low_wcet, high_wcet)
+            base_execution_time = min(random.uniform(low_wcet, low_wcet * 1.1), high_wcet)
 
         return base_execution_time * Job.execution_time_coefficient
 

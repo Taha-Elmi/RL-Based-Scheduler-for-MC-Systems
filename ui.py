@@ -97,8 +97,8 @@ class GraphVisualizer:
             self.line2.set_data(self.system.time_history, self.system.dropped_jobs_history)
 
             # Keep x-axis always showing the last 200 units
-            max_x = max(200, max(self.system.time_history))  # Get the latest time value
-            min_x = max(0, max_x - 200)  # Keep only last 200 units
+            max_x = max(100000, max(self.system.time_history))  # Get the latest time value
+            min_x = max(0, max_x - 100000)  # Keep only last 200 units
 
             self.ax.set_xlim(min_x, max_x)  # Update x-axis range
             self.ax.relim()
