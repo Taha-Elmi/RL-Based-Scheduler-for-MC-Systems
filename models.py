@@ -14,7 +14,6 @@ class System:
     _instance = None
 
     def __init__(self):
-        self.rl_agent = None
         self.tasks = []
         self.jobs = []
         self.ready_queue = []
@@ -28,11 +27,12 @@ class System:
         self.time_history = []
         self.hyper_period = 0
         self.time = 0
+        self.rl_agent = QLearningAgent()
 
     def add_task(self, task):
         self.tasks.append(task)
         self.hyper_period = lcm(*[task.period for task in self.tasks])
-        self.rl_agent = RLAgent(len(self.tasks))
+        # self.rl_agent = RLAgent(len(self.tasks))
 
     def calculate_utilization(self):
         for task_criticality_level in CriticalityLevel:
@@ -50,6 +50,7 @@ class System:
                     (1 - self.utilization[(CriticalityLevel.LOW, CriticalityLevel.LOW)]))
 
     def setup(self):
+        self.jobs.clear()
         self.calculate_utilization()
         self.update_vdf()
 
@@ -83,7 +84,7 @@ class System:
             if job.get_deadline() <= self.time:
                 self.ready_queue.remove(job)
                 self.n_dropped_jobs += 1
-                print(f'a jon from task {job.task.id} has been dropped.')
+                # print(f'a jon from task {job.task.id} has been dropped.')
 
     def generate_new_jobs(self):
         for task in self.tasks:
@@ -101,7 +102,8 @@ class System:
 
         if self.time % self.hyper_period == 0:
             self.update_graph()
-            self.update_wcet_with_rl()
+            # self.update_wcet_with_rl()
+            self.setup()
 
         self.generate_new_jobs()
 
@@ -123,7 +125,7 @@ class System:
 
     def switch_mode_to_low(self):
         self.criticality_level = CriticalityLevel.LOW
-        print(f'system has switched to {self.criticality_level}')
+        # print(f'system has switched to {self.criticality_level}')
 
     def check_high_criticality_conditions(self):
         for job in self.ready_queue:
@@ -135,11 +137,11 @@ class System:
         self.criticality_level = CriticalityLevel.HIGH
         for job in self.ready_queue[:]:
             if job.task.criticality_level == CriticalityLevel.LOW:
-                print(f'a job from task {job.task.id} has been dropped.')
+                # print(f'a job from task {job.task.id} has been dropped.')
                 self.ready_queue.remove(job)
                 self.n_dropped_jobs += 1
         self.n_mode_change += 1
-        print(f'system has switched to {self.criticality_level}')
+        # print(f'system has switched to {self.criticality_level}')
 
     def update_graph(self):
         """Update the graph data for real-time plotting."""
@@ -151,42 +153,24 @@ class System:
         self.n_dropped_jobs = 0
 
     def update_wcet_with_rl(self):
-        state = self.calculate_qos_state()
-        # input('state: ' + str(state))
-        state_idx = np.digitize(state, self.rl_agent.states) - 1
-        action = self.rl_agent.select_action(state_idx)
-        # input('action: ' + str(action))
+        execution_history = [job.execution_time for job in self.jobs if job.is_done]
 
-        if action == "increase":
-            for task in self.tasks:
-                if task.criticality_level == CriticalityLevel.HIGH:
-                    task.wcet[CriticalityLevel.LOW] = min(task.wcet[CriticalityLevel.LOW] + 1, task.wcet[CriticalityLevel.HIGH])
+        if self.rl_agent.last_state is None:
+            self.rl_agent.last_state = self.rl_agent.get_state(execution_history)
+            return
 
-        elif action == "decrease":
-            for task in self.tasks:
-                if task.criticality_level == CriticalityLevel.HIGH:
-                    task.wcet[CriticalityLevel.LOW] = max(task.wcet[CriticalityLevel.LOW] - 1, 1)
+        new_state = self.rl_agent.get_state(execution_history)
+        reward = - (self.n_dropped_jobs / len(self.jobs) if self.jobs else 0)  # Negative drop percentage
+        self.rl_agent.update_q(self.rl_agent.last_state, self.rl_agent.last_action, reward, new_state)
 
-        reward = self.compute_reward()
-        next_state_idx = np.digitize(self.calculate_qos_state(), self.rl_agent.states) - 1
-        self.rl_agent.update_q_table(state_idx, self.rl_agent.actions.index(action), reward, next_state_idx)
-        print(self.rl_agent.q_table)
-        # input()
+        action = self.rl_agent.choose_action(new_state)
 
-        self.calculate_utilization()
-        self.update_vdf()
+        for task in self.tasks:
+            if task.criticality_level == CriticalityLevel.HIGH:
+                task.wcet[CriticalityLevel.LOW] += action
 
-    def calculate_qos_state(self):
-        # Define QoS as the ratio of scheduled LC tasks to max possible LC tasks
-        scheduled_lc_tasks = sum(1 for job in self.jobs if job.task.criticality_level == CriticalityLevel.LOW and job.is_done)
-        max_lc_tasks = sum(1 for job in self.jobs if job.task.criticality_level == CriticalityLevel.LOW)
-        return scheduled_lc_tasks / max_lc_tasks if max_lc_tasks > 0 else 1.0
-
-    def compute_reward(self):
-        # Reward function based on mode switches and QoS
-        mode_switch_penalty = -10 if self.criticality_level == CriticalityLevel.HIGH else 0
-        qos_reward = self.calculate_qos_state() * 10 - 10
-        return qos_reward
+        self.rl_agent.last_state = new_state
+        self.rl_agent.last_action = action
 
     @staticmethod
     def get_instance():
@@ -228,7 +212,7 @@ class Job:
         else:
             base_execution_time = min(random.uniform(low_wcet, low_wcet * 1.1), high_wcet)
 
-        return base_execution_time * Job.execution_time_coefficient
+        return base_execution_time + Job.execution_time_coefficient
 
     def get_deadline(self):
         if System.get_instance().criticality_level == CriticalityLevel.HIGH or self.task.criticality_level == CriticalityLevel.LOW:
@@ -244,3 +228,42 @@ class Job:
 
     def __repr__(self):
         return f'[task_id: {self.task.id}, deadline: {self.get_deadline()}, wcet: {self.task.wcet}, execution_time: {self.execution_time}]\n'
+
+
+class QLearningAgent:
+    def __init__(self, alpha=0.1, gamma=0.9, epsilon=0.1):
+        self.alpha = alpha  # Learning rate
+        self.gamma = gamma  # Discount factor
+        self.epsilon = epsilon  # Exploration rate
+        self.q_table = {}  # Q-values for state-action pairs
+        self.actions = [-1, 0, 1]  # Decrease, Do Nothing, Increase WCET
+        self.last_state = None
+        self.last_action = 0
+
+    def get_state(self, execution_history):
+        if not execution_history:
+            return 0
+        return round(sum(execution_history) / len(execution_history))
+
+    def choose_action(self, state):
+        if state not in self.q_table:
+            self.q_table[state] = {a: 0 for a in self.actions}
+
+        if random.uniform(0, 1) < self.epsilon:
+            return random.choice(self.actions)
+
+        max_q = max(self.q_table[state].values())
+        best_actions = [a for a, q in self.q_table[state].items() if q == max_q]
+
+        if 0 in best_actions:
+            return 0  # Prioritize "do nothing" if tied
+        return random.choice(best_actions)
+
+    def update_q(self, state, action, reward, next_state):
+        if state not in self.q_table:
+            self.q_table[state] = {a: 0 for a in self.actions}
+        if next_state not in self.q_table:
+            self.q_table[next_state] = {a: 0 for a in self.actions}
+
+        max_next_q = max(self.q_table[next_state].values())
+        self.q_table[state][action] += self.alpha * (reward + self.gamma * max_next_q - self.q_table[state][action])
