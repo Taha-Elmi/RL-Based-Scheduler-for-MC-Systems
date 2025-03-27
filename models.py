@@ -196,6 +196,7 @@ class Task:
         self.id = id
         self.period = period
         self.wcet = {CriticalityLevel.LOW: low_wcet, CriticalityLevel.HIGH: high_wcet}
+        self.basic_low_wcet = low_wcet
         self.aet = 0
         self.number_of_jobs = 0
         self.criticality_level = criticality_level
@@ -213,7 +214,7 @@ class Job:
         self.is_done = False
 
     def generate_random_execution_time(self):
-        low_wcet = self.task.wcet[CriticalityLevel.LOW]
+        low_wcet = self.task.basic_low_wcet
         high_wcet = self.task.wcet[CriticalityLevel.HIGH]
 
         if random.random() < 0.9:
