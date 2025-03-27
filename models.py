@@ -27,6 +27,10 @@ class System:
         self.time_history = []
         self.hyper_period = 0
         self.time = 0
+
+        self.dropped_jobs_percentage_history = []
+        self.hyper_period_history = []
+
         self.rl_agent = QLearningAgent()
 
     def add_task(self, task):
@@ -102,7 +106,7 @@ class System:
 
         if self.time % self.hyper_period == 0:
             self.update_graph()
-            # self.update_wcet_with_rl()
+            self.update_wcet_with_rl()
             self.setup()
 
         self.generate_new_jobs()
@@ -145,9 +149,14 @@ class System:
 
     def update_graph(self):
         """Update the graph data for real-time plotting."""
-        self.mode_change_history.append(self.n_mode_change)
-        self.dropped_jobs_history.append(self.n_dropped_jobs)
-        self.time_history.append(self.time)
+        # self.mode_change_history.append(self.n_mode_change)
+        # self.dropped_jobs_history.append(self.n_dropped_jobs / len(self.jobs))
+        # self.time_history = list(range(len(self.dropped_jobs_history)))
+
+        total_jobs = len(self.jobs)
+        drop_percentage = (self.n_dropped_jobs / total_jobs) * 100 if total_jobs > 0 else 0
+        self.dropped_jobs_percentage_history.append(drop_percentage)
+        self.hyper_period_history.append(len(self.hyper_period_history))
 
         self.n_mode_change = 0
         self.n_dropped_jobs = 0

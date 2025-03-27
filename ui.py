@@ -75,34 +75,29 @@ class ExecutionTimeAdjuster:
         Job.execution_time_coefficient = 0.5 + ((self.knob_x - self.slider_x) / self.slider_width) * 1.5
 
 
-
 class GraphVisualizer:
     def __init__(self, system):
         self.system = system
         self.fig, self.ax = plt.subplots()
-        self.line1, = self.ax.plot([], [], label="Mode Changes", color="blue", marker="o")
-        self.line2, = self.ax.plot([], [], label="Dropped Jobs", color="red", marker="s")
+        self.line, = self.ax.plot([], [], label="Dropped Jobs %", color="red", marker="s")
 
-        self.ax.set_xlabel("Time")
-        self.ax.set_ylabel("Count")
-        self.ax.set_title("System Performance Over Time")
+        self.ax.set_xlabel("Hyper Period")
+        self.ax.set_ylabel("Dropped Jobs (%)")
+        self.ax.set_title("Dropped Jobs Percentage Over Hyper Periods")
         self.ax.legend()
         self.ax.grid(True)
 
     def update_plot(self):
         """Update Matplotlib graph and return as Pygame image."""
-        if len(self.system.time_history) > 0:
-            # Set data for lines
-            self.line1.set_data(self.system.time_history, self.system.mode_change_history)
-            self.line2.set_data(self.system.time_history, self.system.dropped_jobs_history)
+        if len(self.system.hyper_period_history) > 0:
+            self.line.set_data(self.system.hyper_period_history, self.system.dropped_jobs_percentage_history)
 
-            # Keep x-axis always showing the last 200 units
-            max_x = max(100000, max(self.system.time_history))  # Get the latest time value
-            min_x = max(0, max_x - 100000)  # Keep only last 200 units
+            # X-axis should always start from 1 and move forward
+            max_x = max(self.system.hyper_period_history)
+            min_x = max(1, max_x - 20)  # Keep last 20 hyper-periods visible
 
-            self.ax.set_xlim(min_x, max_x)  # Update x-axis range
-            self.ax.relim()
-            self.ax.autoscale_view(scaley=True)  # Only autoscale y-axis
+            self.ax.set_xlim(min_x, max_x)
+            self.ax.set_ylim(0, 100)  # Y-axis fixed to 0-100% for readability
 
         plt.draw()
 
