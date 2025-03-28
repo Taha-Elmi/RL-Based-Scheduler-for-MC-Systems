@@ -1,8 +1,7 @@
 import enum
 import random
 from math import lcm
-from rl_agent import RLAgent
-import numpy as np
+from rl_agent_3 import WCET_AdaptiveAgent
 
 
 class CriticalityLevel(enum.Enum):
@@ -162,14 +161,25 @@ class System:
         self.n_dropped_jobs = 0
 
     def update_wcet_with_rl(self):
-        execution_history = [job.execution_time for job in self.jobs if job.is_done]
+        # execution_history = [job.execution_time for job in self.jobs if job.is_done]
 
         if self.rl_agent.last_state is None:
-            self.rl_agent.last_state = self.rl_agent.get_state(execution_history)
+            self.rl_agent.last_state = self.rl_agent.get_state(self.jobs)
             return
 
-        new_state = self.rl_agent.get_state(execution_history)
-        reward = - (self.n_dropped_jobs / len(self.jobs) if self.jobs else 0)  # Negative drop percentage
+        new_state = self.rl_agent.get_state(self.jobs)
+        reward = (len([j for j in self.jobs if j.task.criticality_level == CriticalityLevel.LOW and j.is_done]) /
+                  len([j for j in self.jobs if j.task.criticality_level == CriticalityLevel.LOW]) if self.jobs else 0)
+
+        # print(f'state: {self.rl_agent.last_state}')
+        # print(f'action: {self.rl_agent.last_action}')
+        # print(f'reward: {reward}')
+        # print(f'new_state: {new_state}')
+        # print('q_table:')
+        # for k, v in self.rl_agent.q_table.items():
+        #     print(f'{k}: {v}')
+        # input('--------------------------------------------------------------')
+
         self.rl_agent.update_q(self.rl_agent.last_state, self.rl_agent.last_action, reward, new_state)
 
         action = self.rl_agent.choose_action(new_state)
@@ -180,6 +190,7 @@ class System:
 
         self.rl_agent.last_state = new_state
         self.rl_agent.last_action = action
+
 
     @staticmethod
     def get_instance():
@@ -241,7 +252,7 @@ class Job:
 
 
 class QLearningAgent:
-    def __init__(self, alpha=0.1, gamma=0.9, epsilon=0.1):
+    def __init__(self, alpha=0.5, gamma=0, epsilon=0.1):
         self.alpha = alpha  # Learning rate
         self.gamma = gamma  # Discount factor
         self.epsilon = epsilon  # Exploration rate
@@ -250,10 +261,11 @@ class QLearningAgent:
         self.last_state = None
         self.last_action = 0
 
-    def get_state(self, execution_history):
-        if not execution_history:
-            return 0
-        return round(sum(execution_history) / len(execution_history))
+    def get_state(self, jobs):
+        low_critical_jobs = [j for j in jobs if j.task.criticality_level == CriticalityLevel.LOW]
+        if len(low_critical_jobs) == 0:
+            return 0.0
+        return round(len([j for j in low_critical_jobs if j.is_done]) / len(low_critical_jobs), 2)
 
     def choose_action(self, state):
         if state not in self.q_table:

@@ -36,4 +36,5 @@ if __name__ == '__main__':
 
     adjuster = ExecutionTimeAdjuster(System.get_instance())
     adjuster.run()
+    # main()
 
