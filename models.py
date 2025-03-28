@@ -30,7 +30,7 @@ class System:
         self.dropped_jobs_percentage_history = []
         self.hyper_period_history = []
 
-        self.rl_agent = QLearningAgent()
+        self.rl_agent = WCET_AdaptiveAgent(min_diff=-0.2, max_diff=1.0, step=0.1)
 
     def add_task(self, task):
         self.tasks.append(task)
@@ -105,7 +105,7 @@ class System:
 
         if self.time % self.hyper_period == 0:
             self.update_graph()
-            self.update_wcet_with_rl()
+            # self.update_wcet_with_rl()
             self.setup()
 
         self.generate_new_jobs()
@@ -161,13 +161,10 @@ class System:
         self.n_dropped_jobs = 0
 
     def update_wcet_with_rl(self):
-        # execution_history = [job.execution_time for job in self.jobs if job.is_done]
-
         if self.rl_agent.last_state is None:
-            self.rl_agent.last_state = self.rl_agent.get_state(self.jobs)
+            self.rl_agent.last_state = 0.0
             return
 
-        new_state = self.rl_agent.get_state(self.jobs)
         reward = (len([j for j in self.jobs if j.task.criticality_level == CriticalityLevel.LOW and j.is_done]) /
                   len([j for j in self.jobs if j.task.criticality_level == CriticalityLevel.LOW]) if self.jobs else 0)
 
@@ -180,9 +177,10 @@ class System:
         #     print(f'{k}: {v}')
         # input('--------------------------------------------------------------')
 
-        self.rl_agent.update_q(self.rl_agent.last_state, self.rl_agent.last_action, reward, new_state)
+        self.rl_agent.update_q_table(self.rl_agent.last_state, self.rl_agent.last_action, reward)
 
-        action = self.rl_agent.choose_action(new_state)
+        new_state = self.rl_agent.last_state + self.rl_agent.last_action
+        action = self.rl_agent.select_action(new_state)
 
         for task in self.tasks:
             if task.criticality_level == CriticalityLevel.HIGH:
@@ -190,7 +188,6 @@ class System:
 
         self.rl_agent.last_state = new_state
         self.rl_agent.last_action = action
-
 
     @staticmethod
     def get_instance():

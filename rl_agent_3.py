@@ -20,6 +20,10 @@ class WCET_AdaptiveAgent:
         # Initialize Q-table
         self.q_table = {(state, action): 0.0 for state in self.states for action in self.actions[state]}
 
+        # Store the last state and action until the reward comes out
+        self.last_state = None
+        self.last_action = 0
+
     def select_action(self, state, epsilon=0.1):
         """ Choose action using an epsilon-greedy policy. """
         if np.random.rand() < epsilon:
