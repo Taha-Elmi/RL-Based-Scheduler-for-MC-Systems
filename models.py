@@ -30,7 +30,7 @@ class System:
         self.dropped_jobs_percentage_history = []
         self.hyper_period_history = []
 
-        self.rl_agent = WCET_AdaptiveAgent(min_diff=-0.2, max_diff=1.0, step=0.1)
+        self.rl_agent = WCET_AdaptiveAgent(min_diff=-1.0, max_diff=1.0, step=0.1)
 
     def add_task(self, task):
         self.tasks.append(task)
@@ -105,7 +105,7 @@ class System:
 
         if self.time % self.hyper_period == 0:
             self.update_graph()
-            # self.update_wcet_with_rl()
+            self.update_wcet_with_rl()
             self.setup()
 
         self.generate_new_jobs()
@@ -171,7 +171,7 @@ class System:
         # print(f'state: {self.rl_agent.last_state}')
         # print(f'action: {self.rl_agent.last_action}')
         # print(f'reward: {reward}')
-        # print(f'new_state: {new_state}')
+        # print(f'new_state: {round(self.rl_agent.last_state + self.rl_agent.last_action, 1)}')
         # print('q_table:')
         # for k, v in self.rl_agent.q_table.items():
         #     print(f'{k}: {v}')
@@ -179,7 +179,7 @@ class System:
 
         self.rl_agent.update_q_table(self.rl_agent.last_state, self.rl_agent.last_action, reward)
 
-        new_state = self.rl_agent.last_state + self.rl_agent.last_action
+        new_state = round(self.rl_agent.last_state + self.rl_agent.last_action, 1)
         action = self.rl_agent.select_action(new_state)
 
         for task in self.tasks:
