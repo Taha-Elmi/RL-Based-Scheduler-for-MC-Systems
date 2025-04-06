@@ -1,7 +1,7 @@
 import enum
 import random
 from math import lcm
-from rl_agent_3 import WCET_AdaptiveAgent
+from rl_agent import WCET_AdaptiveAgent
 
 
 class CriticalityLevel(enum.Enum):
