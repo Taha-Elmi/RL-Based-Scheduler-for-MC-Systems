@@ -167,15 +167,6 @@ class System:
 
         reward = self.rl_agent.calculate_reward(self.jobs)
 
-        # print(f'last_state: {self.rl_agent.last_state}')
-        # print(f'action: {self.rl_agent.last_action}')
-        # print(f'reward: {reward}')
-        # print(f'current_state: {round(self.rl_agent.last_state + self.rl_agent.last_action, 1)}')
-        # print('q_table:')
-        # for k, v in self.rl_agent.q_table.items():
-        #     print(f'{k}: {v}')
-        # input('--------------------------------------------------------------')
-
         self.rl_agent.update_values(self.rl_agent.last_state, reward)
 
         current_state = round(self.rl_agent.last_state + self.rl_agent.last_action, 1)
@@ -196,10 +187,7 @@ class System:
 
 
 class Task:
-    counter = 1
-
     def __init__(self, id, period, low_wcet, high_wcet, criticality_level):
-        # self.id = Task.counter
         self.id = id
         self.period = period
         self.wcet = {CriticalityLevel.LOW: low_wcet, CriticalityLevel.HIGH: high_wcet}
@@ -207,8 +195,6 @@ class Task:
         self.aet = 0
         self.number_of_jobs = 0
         self.criticality_level = criticality_level
-
-        Task.counter += 1
 
 
 class Job:
