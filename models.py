@@ -165,8 +165,7 @@ class System:
             self.rl_agent.last_state = 0.0
             return
 
-        reward = (len([j for j in self.jobs if j.task.criticality_level == CriticalityLevel.LOW and j.is_done]) /
-                  len([j for j in self.jobs if j.task.criticality_level == CriticalityLevel.LOW]) if self.jobs else 0)
+        reward = self.rl_agent.calculate_reward(self.jobs)
 
         # print(f'last_state: {self.rl_agent.last_state}')
         # print(f'action: {self.rl_agent.last_action}')

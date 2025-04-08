@@ -1,4 +1,5 @@
 import numpy as np
+from models import CriticalityLevel
 
 
 class TDLearningAgent:
@@ -21,6 +22,10 @@ class TDLearningAgent:
         # Store the last state and action until the reward comes out
         self.last_state = None
         self.last_action = 0
+
+    def calculate_reward(self, jobs):
+        (len([j for j in jobs if j.task.criticality_level == CriticalityLevel.LOW and j.is_done]) /
+         len([j for j in jobs if j.task.criticality_level == CriticalityLevel.LOW]) if jobs else 0)
 
     def select_action(self, state, epsilon=0.1):
         """ Choose action using an epsilon-greedy policy. """
