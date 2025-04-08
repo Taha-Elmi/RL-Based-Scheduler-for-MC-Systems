@@ -24,8 +24,8 @@ class TDLearningAgent:
 
     def calculate_reward(self, jobs):
         from models import CriticalityLevel
-        (len([j for j in jobs if j.task.criticality_level == CriticalityLevel.LOW and j.is_done]) /
-         len([j for j in jobs if j.task.criticality_level == CriticalityLevel.LOW]) if jobs else 0)
+        return (len([j for j in jobs if j.task.criticality_level == CriticalityLevel.LOW and j.is_done]) /
+                len([j for j in jobs if j.task.criticality_level == CriticalityLevel.LOW]) if jobs else 0)
 
     def select_action(self, state, epsilon=0.1):
         """ Choose action using an epsilon-greedy policy. """
