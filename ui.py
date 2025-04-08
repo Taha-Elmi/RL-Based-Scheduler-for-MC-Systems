@@ -1,7 +1,6 @@
 import pygame
 from matplotlib import pyplot as plt
 from models import Job
-import time
 import io
 
 

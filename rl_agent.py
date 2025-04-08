@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class WCET_AdaptiveAgent:
+class TDLearningAgent:
     def __init__(self, min_diff, max_diff, step=0.1, learning_rate=0.1, discount_factor=0):
         self.min_diff = min_diff
         self.max_diff = max_diff
@@ -18,9 +18,6 @@ class WCET_AdaptiveAgent:
         self.actions[min_diff] = [0, step]  # First state: No decrease
         self.actions[max_diff] = [-step, 0]  # Last state: No increase
 
-        # # Initialize Q-table
-        # self.q_table = {(state, action): 0.0 for state in self.states for action in self.actions[state]}
-
         # Store the last state and action until the reward comes out
         self.last_state = None
         self.last_action = 0
@@ -31,6 +28,6 @@ class WCET_AdaptiveAgent:
             return np.random.choice(self.actions[state])
         return max(self.actions[state], key=lambda a: self.values[round(state + a, 1)])
 
-    def update_q_table(self, state, action, reward):
-        """ Update the Q-table using the Q-learning update rule. """
+    def update_values(self, state, reward):
+        """ Update values using the TD-learning update rule. """
         self.values[state] += self.learning_rate * (reward - self.values[state])

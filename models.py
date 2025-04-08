@@ -1,7 +1,7 @@
 import enum
 import random
 from math import lcm
-from rl_agent import WCET_AdaptiveAgent
+from rl_agent import TDLearningAgent
 
 
 class CriticalityLevel(enum.Enum):
@@ -30,7 +30,7 @@ class System:
         self.dropped_jobs_percentage_history = []
         self.hyper_period_history = []
 
-        self.rl_agent = WCET_AdaptiveAgent(min_diff=-1.0, max_diff=1.0, step=0.1)
+        self.rl_agent = TDLearningAgent(min_diff=-1.0, max_diff=1.0, step=0.1)
 
     def add_task(self, task):
         self.tasks.append(task)
@@ -168,25 +168,25 @@ class System:
         reward = (len([j for j in self.jobs if j.task.criticality_level == CriticalityLevel.LOW and j.is_done]) /
                   len([j for j in self.jobs if j.task.criticality_level == CriticalityLevel.LOW]) if self.jobs else 0)
 
-        # print(f'state: {self.rl_agent.last_state}')
+        # print(f'last_state: {self.rl_agent.last_state}')
         # print(f'action: {self.rl_agent.last_action}')
         # print(f'reward: {reward}')
-        # print(f'new_state: {round(self.rl_agent.last_state + self.rl_agent.last_action, 1)}')
+        # print(f'current_state: {round(self.rl_agent.last_state + self.rl_agent.last_action, 1)}')
         # print('q_table:')
         # for k, v in self.rl_agent.q_table.items():
         #     print(f'{k}: {v}')
         # input('--------------------------------------------------------------')
 
-        self.rl_agent.update_q_table(self.rl_agent.last_state, self.rl_agent.last_action, reward)
+        self.rl_agent.update_values(self.rl_agent.last_state, reward)
 
-        new_state = round(self.rl_agent.last_state + self.rl_agent.last_action, 1)
-        action = self.rl_agent.select_action(new_state)
+        current_state = round(self.rl_agent.last_state + self.rl_agent.last_action, 1)
+        action = self.rl_agent.select_action(current_state)
 
         for task in self.tasks:
             if task.criticality_level == CriticalityLevel.HIGH:
                 task.wcet[CriticalityLevel.LOW] += action
 
-        self.rl_agent.last_state = new_state
+        self.rl_agent.last_state = current_state
         self.rl_agent.last_action = action
 
     @staticmethod
@@ -246,43 +246,3 @@ class Job:
 
     def __repr__(self):
         return f'[task_id: {self.task.id}, deadline: {self.get_deadline()}, wcet: {self.task.wcet}, execution_time: {self.execution_time}]\n'
-
-
-class QLearningAgent:
-    def __init__(self, alpha=0.5, gamma=0, epsilon=0.1):
-        self.alpha = alpha  # Learning rate
-        self.gamma = gamma  # Discount factor
-        self.epsilon = epsilon  # Exploration rate
-        self.q_table = {}  # Q-values for state-action pairs
-        self.actions = [-1, 0, 1]  # Decrease, Do Nothing, Increase WCET
-        self.last_state = None
-        self.last_action = 0
-
-    def get_state(self, jobs):
-        low_critical_jobs = [j for j in jobs if j.task.criticality_level == CriticalityLevel.LOW]
-        if len(low_critical_jobs) == 0:
-            return 0.0
-        return round(len([j for j in low_critical_jobs if j.is_done]) / len(low_critical_jobs), 2)
-
-    def choose_action(self, state):
-        if state not in self.q_table:
-            self.q_table[state] = {a: 0 for a in self.actions}
-
-        if random.uniform(0, 1) < self.epsilon:
-            return random.choice(self.actions)
-
-        max_q = max(self.q_table[state].values())
-        best_actions = [a for a, q in self.q_table[state].items() if q == max_q]
-
-        if 0 in best_actions:
-            return 0  # Prioritize "do nothing" if tied
-        return random.choice(best_actions)
-
-    def update_q(self, state, action, reward, next_state):
-        if state not in self.q_table:
-            self.q_table[state] = {a: 0 for a in self.actions}
-        if next_state not in self.q_table:
-            self.q_table[next_state] = {a: 0 for a in self.actions}
-
-        max_next_q = max(self.q_table[next_state].values())
-        self.q_table[state][action] += self.alpha * (reward + self.gamma * max_next_q - self.q_table[state][action])
