@@ -23,6 +23,7 @@ class TDLearningAgent:
         self.last_action = 0
 
     def calculate_reward(self, jobs):
+        """ Calculate the reward based on the jobs' data. """
         from models import CriticalityLevel
         return (len([j for j in jobs if j.task.criticality_level == CriticalityLevel.LOW and j.is_done]) /
                 len([j for j in jobs if j.task.criticality_level == CriticalityLevel.LOW]) if jobs else 0)
