@@ -1,5 +1,4 @@
 import numpy as np
-from models import CriticalityLevel
 
 
 class TDLearningAgent:
@@ -24,6 +23,7 @@ class TDLearningAgent:
         self.last_action = 0
 
     def calculate_reward(self, jobs):
+        from models import CriticalityLevel
         (len([j for j in jobs if j.task.criticality_level == CriticalityLevel.LOW and j.is_done]) /
          len([j for j in jobs if j.task.criticality_level == CriticalityLevel.LOW]) if jobs else 0)
 
