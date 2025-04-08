@@ -13,6 +13,7 @@ class System:
     _instance = None
 
     def __init__(self):
+        self.processor = Processor(1)
         self.tasks = []
         self.jobs = []
         self.ready_queue = []
@@ -118,7 +119,7 @@ class System:
         if self.criticality_level == CriticalityLevel.LOW and self.check_high_criticality_conditions():
             self.switch_mode_to_high()
 
-        self.time += 1
+        self.time += self.processor.frequency
 
     def check_low_criticality_conditions(self):
         for job in self.ready_queue:
@@ -186,6 +187,11 @@ class System:
         return System._instance
 
 
+class Processor:
+    def __init__(self, frequency):
+        self.frequency = frequency
+
+
 class Task:
     def __init__(self, id, period, low_wcet, high_wcet, criticality_level):
         self.id = id
@@ -224,7 +230,7 @@ class Job:
             return self.release_time + (System.get_instance().vdf * self.task.period)
 
     def execute(self):
-        self.execution_time += 1
+        self.execution_time += System.get_instance().processor.frequency
         if self.execution_time > self.generate_random_execution_time():
             self.is_done = True
             System.get_instance().ready_queue.remove(self)
