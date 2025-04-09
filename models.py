@@ -20,14 +20,10 @@ class System:
         self.criticality_level = CriticalityLevel.LOW
         self.utilization = {}
         self.vdf = 0
-        self.n_mode_change = 0
-        self.n_dropped_jobs = 0
-        self.mode_change_history = []
-        self.dropped_jobs_history = []
-        self.time_history = []
         self.hyper_period = 0
         self.time = 0
 
+        self.n_dropped_jobs = 0
         self.dropped_jobs_percentage_history = []
         self.hyper_period_history = []
 
@@ -144,7 +140,6 @@ class System:
                 # print(f'a job from task {job.task.id} has been dropped.')
                 self.ready_queue.remove(job)
                 self.n_dropped_jobs += 1
-        self.n_mode_change += 1
         # print(f'system has switched to {self.criticality_level}')
 
     def update_graph(self):
@@ -158,7 +153,6 @@ class System:
         self.dropped_jobs_percentage_history.append(drop_percentage)
         self.hyper_period_history.append(len(self.hyper_period_history))
 
-        self.n_mode_change = 0
         self.n_dropped_jobs = 0
 
     def update_wcet_with_rl(self):
