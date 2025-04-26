@@ -19,7 +19,7 @@ class System:
         self.ready_queue = []
         self.criticality_level = CriticalityLevel.LOW
         self.utilization = {}
-        self.vdf = 0
+        self.vdf = 0  # virtual deadline factor
         self.hyper_period = 0
         self.time = 0
 
@@ -81,7 +81,7 @@ class System:
 
     def check_expired_jobs(self):
         for job in self.ready_queue:
-            if job.get_deadline() <= self.time:
+            if job.get_real_deadline() <= self.time:
                 self.ready_queue.remove(job)
                 self.n_dropped_jobs += 1
                 # print(f'a jon from task {job.task.id} has been dropped.')
@@ -192,7 +192,7 @@ class Task:
         self.period = period
         self.wcet = {CriticalityLevel.LOW: low_wcet, CriticalityLevel.HIGH: high_wcet}
         self.basic_low_wcet = low_wcet
-        self.aet = 0
+        # self.aet = 0
         self.number_of_jobs = 0
         self.criticality_level = criticality_level
 
@@ -217,11 +217,17 @@ class Job:
 
         return base_execution_time + Job.execution_time_coefficient
 
+    def get_real_deadline(self):
+        return self.release_time + self.task.period
+
+    def get_virtual_deadline(self):
+        return self.release_time + (System.get_instance().vdf * self.task.period)
+
     def get_deadline(self):
         if System.get_instance().criticality_level == CriticalityLevel.HIGH or self.task.criticality_level == CriticalityLevel.LOW:
-            return self.release_time + self.task.period
+            return self.get_real_deadline()
         else:
-            return self.release_time + (System.get_instance().vdf * self.task.period)
+            return self.get_virtual_deadline()
 
     def execute(self):
         self.execution_time += System.get_instance().processor.frequency
